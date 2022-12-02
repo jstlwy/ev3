@@ -1,0 +1,46 @@
+'Actual maze raw RGB ranges:
+'(197, 200, 147) < White < (284, 282, 210)
+'(223, 213, 46)< Yellow < (272, 249, 54)
+'(214, 45, 26)< Red < (231, 56, 33)
+'(83, 157, 42)< Green < (96, 173, 48)
+'(37, 55, 69) < Blue < (39, 60, 72)
+
+lightPort = 4
+Sensor.SetMode(lightPort, 4)  'Mode 4 = RGB
+
+currentColor = "N"
+previousColor = "N"
+
+While "True"
+  currentRGB = Sensor.ReadRaw(lightPort, 3)
+  DetermineColor()
+  previousColor = currentColor
+  ShowValues()
+EndWhile 
+
+Sub DetermineColor
+  currentRGB = Sensor.ReadRaw(lightPort, 3)
+  percentColor[0] = Math.Round(currentRGB[0]/2.84)
+  percentColor[1] = Math.Round(currentRGB[1]/2.82)
+  percentColor[2] = Math.Round(currentRGB[2]/2.10)
+  If percentColor[0] > 65 And percentColor[0] < 100 And percentColor[1] < 30 And percentColor[2] < 35 Then
+    currentColor = "R"
+  ElseIf percentColor[0] > 25 And percentColor[0] < 35 And percentColor[1] > 55 And percentColor[1] < 75 And percentColor[2] > 15 And percentColor[2] < 25 Then
+    currentColor = "G"
+  ElseIf percentColor[0] < 20 And percentColor[1] > 15 And percentColor[1] < 25 And percentColor[2] > 30 Then
+    currentColor = "B"
+  ElseIf percentColor[0] > 75 And percentColor[1] > 70 And percentColor[1] < 90 And percentColor[2] < 30 Then
+    currentColor = "Y"
+  ElseIf percentColor[0] > 75 And percentColor[1] > 75 And percentColor[2] > 75 Then
+    currentColor = "W"
+  EndIf
+EndSub
+
+Sub ShowValues
+  LCD.StopUpdate()
+  LCD.Clear()
+  LCD.Text(1, 0, 20, 1, "RGB%: " + percentColor[0] + ", " + percentColor[1] + ", " + percentColor[2])
+  LCD.Text(1, 0, 40, 1, "Current Color: " + currentColor)
+  LCD.Text(1, 0, 60, 1, "Previous Color: " + previousColor)
+  LCD.Update()
+EndSub

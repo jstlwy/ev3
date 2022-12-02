@@ -1,0 +1,124 @@
+MATH_E = 2.71828182846
+targetPower = 30
+lightPort = 4
+Sensor.SetMode(lightPort, 0)     'Mode 0 = RLI
+
+'Ask user for target RLI value
+targetRLI = 0 
+targetRLIWasSet = "False"
+While targetRLIWasSet = "False"
+  testRLIResult = Sensor.ReadPercent(lightPort)
+  
+  LCD.StopUpdate()
+  LCD.Clear()
+  LCD.Text(1, 0, 0, 2, "RLI:")
+  LCD.Text(1, 0, 30, 2, testRLIResult)
+  LCD.Update()
+  
+  buttonPressed = Buttons.GetClicks()
+  If Text.IsSubText(buttonPressed, "E") Then
+    targetRLI = testRLIResult
+    targetRLIWasSet = "True"
+  EndIf
+  Program.Delay(100)
+EndWhile
+
+LCD.Clear()
+
+'Wait for user to press Enter before proceeding
+enterWasPushed = "False"
+While enterWasPushed = "False" 
+  buttonPressed = Buttons.GetClicks()
+  If Text.IsSubText(buttonPressed, "E") Then
+    enterWasPushed = "True"
+  EndIf
+EndWhile
+
+gyroPort = 1
+Sensor.SetMode(gyroPort, 1)
+Sensor.SetMode(gyroPort, 0)
+Motor.Move("BC", targetPower, 500, "False")
+
+'Initialize PID drive loop variables
+endWasFound = "False"
+integral = 0
+derivative = 0
+lastError = 0
+Kp = 0.05
+Ki = 0.0005
+Kd = 0.10
+
+'MAIN DRIVE LOOP
+While endWasFound = "False"
+  currentAngle = Sensor.ReadRawValue(gyroPort, 0)
+  If currentAngle < -360 Then
+    endWasFound = "True"
+  EndIf
+  
+  'Determine error and turn values
+  measuredRLI = Sensor.ReadPercent(lightPort)
+  error = measuredRLI - targetRLI
+  integral = integral + error
+  derivative = error - lastError
+  correction = (Kp * error) + (Ki * integral) + (Kd * derivative)
+  lastError = error
+  
+  Drive()
+  'ShowValues()
+EndWhile
+
+Motor.Stop("BC", "True")
+PlayMario()
+
+Sub Drive
+  If correction = 0 Then
+    Motor.Start("BC", targetPower)
+  Else
+    If correction < 0 Then
+      'RLI < Target RLI: Too far left into blue, so slow left wheel, reverse right
+      powerB = targetPower * Math.Power(MATH_E, correction)
+      powerC = targetPower * Math.Cos(Math.Pi * (1 - Math.Power(MATH_E, correction)))
+    Else
+      'RLI > Target RLI: Too far right into white, so reverse left wheel, slow right
+      powerB = targetPower * Math.Cos(Math.Pi * (1 - Math.Power(MATH_E, -1 * correction)))
+      powerC = targetPower * Math.Power(MATH_E, -1 * correction)
+    EndIf
+    Motor.StartSync("BC", powerB, powerC)
+  EndIf
+EndSub
+
+Sub ShowValues
+  LCD.StopUpdate()
+  LCD.Clear()
+  LCD.Text(1,0,0,1, "Target RLI: " + targetRLI)
+  LCD.Text(1,0,10,1, "Measured RLI: " + measuredRLI)
+  LCD.Text(1,0,20,1, "Error: " + error)
+  LCD.Text(1,0,30,1, "Integral: " + integral)
+  LCD.Text(1,0,40,1, "Derivative: " + derivative)
+  LCD.Text(1,0,50,1, "Correction: " + correction)
+  LCD.Text(1,0,60,1, "Angle: " + currentAngle)
+  LCD.Update()
+EndSub
+
+Sub PlayMario
+  noteVolume = 50
+  noteLengthms = 175
+  Speaker.Note(noteVolume, "E4", noteLengthms)
+  Speaker.Wait()
+  Speaker.Note(noteVolume, "E4", noteLengthms)
+  Speaker.Wait()
+  Program.Delay(noteLengthms)
+  Speaker.Note(noteVolume, "E4", noteLengthms)
+  Speaker.Wait()
+  Program.Delay(noteLengthms)
+  Speaker.Note(noteVolume, "C4", noteLengthms)
+  Speaker.Wait()
+  Speaker.Note(noteVolume, "E4", noteLengthms)
+  Speaker.Wait()
+  Program.Delay(noteLengthms)
+  Speaker.Note(noteVolume, "G4", noteLengthms)
+  Speaker.Wait()
+  Program.Delay(3 * noteLengthms)
+  Speaker.Note(noteVolume, "G3", noteLengthms)
+EndSub
+  
